@@ -86,61 +86,69 @@ export const useBattleship = () => {
   const allShipsPlaced = playerShips.length === SHIPS.length;
 
   // --- Sound Effects ---
-  const soundsRef = useRef<{ [key in 'hit' | 'miss' | 'sunk']?: { audio: HTMLAudioElement; isReady: boolean } }>({});
+  const soundsRef = useRef<{ [key in 'hit' | 'miss' | 'sunk']?: HTMLAudioElement }>({});
 
   useEffect(() => {
-    if (typeof Audio !== "undefined") {
-      const soundFiles: { [key in 'hit' | 'miss' | 'sunk']: string } = {
-        hit: '/explosion.mp3',
-        miss: '/select.mp3',
-        sunk: '/water_bubble.mp3',
-      };
-      
-      Object.entries(soundFiles).forEach(([name, src]) => {
-        const soundKey = name as 'hit' | 'miss' | 'sunk';
-        console.log(`[Audio Debug] Initializing audio for "${soundKey}" with src: ${src}`);
-        const audio = new Audio(src);
-        audio.preload = 'auto';
-        
-        soundsRef.current[soundKey] = { audio, isReady: false };
+    if (typeof Audio === "undefined") return;
 
-        audio.addEventListener('loadstart', () => {
-          console.log(`[Audio Debug] Started loading: ${soundKey}`);
-        });
+    const soundFiles: { [key in 'hit' | 'miss' | 'sunk']: string } = {
+      hit: '/explosion.mp3',
+      miss: '/select.mp3',
+      sunk: '/water_bubble.mp3',
+    };
 
-        audio.addEventListener('canplaythrough', () => {
-          console.log(`[Audio Debug] "${soundKey}" is ready to play through.`);
-          const soundData = soundsRef.current[soundKey];
-          if (soundData) {
-             soundData.isReady = true;
+    const loadAudio = async () => {
+      for (const key in soundFiles) {
+        const soundName = key as 'hit' | 'miss' | 'sunk';
+        const src = soundFiles[soundName];
+        try {
+          const response = await fetch(src);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} for ${src}`);
           }
-        });
-        
-        audio.addEventListener('error', (e) => {
-          console.error(`[Audio Debug] Error loading audio file for "${soundKey}".`, e);
-          const mediaError = (e.target as HTMLAudioElement).error;
-          if (mediaError) {
-            console.error(`[Audio Debug] MediaError code: ${mediaError.code}, message: ${mediaError.message}`);
+          const blob = await response.blob();
+          
+          if (!blob.type.startsWith('audio/')) {
+              throw new Error(`Fetched file for ${soundName} is not an audio file. MIME type: ${blob.type}`);
           }
-        });
 
-        // Start loading the audio
-        audio.load();
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          audio.preload = 'auto';
+          
+          await new Promise<void>((resolve, reject) => {
+              audio.oncanplaythrough = () => resolve();
+              // Fix: The `onerror` event parameter can be a string, which does not have a `target` property. Using the `audio` element from the closure is a type-safe way to access error details.
+              audio.onerror = () => reject(new Error(`Audio element error for ${soundName}: ${audio.error?.message}`));
+          });
+          
+          soundsRef.current[soundName] = audio;
+        } catch (error) {
+          console.error(`[Audio] Failed to load sound "${soundName}":`, error);
+        }
+      }
+    };
+
+    loadAudio();
+    
+    return () => {
+      Object.values(soundsRef.current).forEach(audio => {
+        if (audio) {
+            URL.revokeObjectURL(audio.src);
+        }
       });
-    }
+    };
   }, []);
 
   const playSound = useCallback((sound: 'hit' | 'miss' | 'sunk') => {
-    const soundData = soundsRef.current[sound];
-    if (soundData && soundData.audio.src) {
-      console.log(`[Audio Debug] Attempting to play sound "${sound}". Is ready: ${soundData.isReady}`);
-      // Cloning the node is a robust way to play sounds in rapid succession
-      const soundToPlay = soundData.audio.cloneNode() as HTMLAudioElement;
+    const audioObject = soundsRef.current[sound];
+    if (audioObject) {
+      const soundToPlay = audioObject.cloneNode(true) as HTMLAudioElement;
       soundToPlay.play().catch(error => {
-        console.error(`[Audio Debug] Error playing sound "${sound}" (src: ${soundToPlay.src}):`, error);
+        console.error(`[Audio] Error playing sound "${sound}":`, error);
       });
     } else {
-      console.warn(`[Audio Debug] Sound effect "${sound}" is not initialized or has no source.`);
+      console.warn(`[Audio] Sound effect "${sound}" is not loaded yet.`);
     }
   }, []);
 

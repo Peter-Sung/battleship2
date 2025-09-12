@@ -86,42 +86,61 @@ export const useBattleship = () => {
   const allShipsPlaced = playerShips.length === SHIPS.length;
 
   // --- Sound Effects ---
-  const soundsRef = useRef<{ [key in 'hit' | 'miss' | 'sunk']?: HTMLAudioElement }>({});
-  
+  const soundsRef = useRef<{ [key in 'hit' | 'miss' | 'sunk']?: { audio: HTMLAudioElement; isReady: boolean } }>({});
+
   useEffect(() => {
-    // This check ensures Audio is defined, preventing server-side rendering errors.
     if (typeof Audio !== "undefined") {
-      // When files are in the `public` folder, they are served from the root of the domain.
-      // Using an absolute path like '/filename.mp3' is the standard and most reliable way
-      // for the browser to locate these files, regardless of the app's deployment environment.
-      soundsRef.current = {
-        hit: new Audio('/explosion.mp3'),
-        miss: new Audio('/select.mp3'),
-        sunk: new Audio('/water_bubble.mp3'),
+      const soundFiles: { [key in 'hit' | 'miss' | 'sunk']: string } = {
+        hit: '/explosion.mp3',
+        miss: '/select.mp3',
+        sunk: '/water_bubble.mp3',
       };
       
-      Object.entries(soundsRef.current).forEach(([name, audio]) => {
-        if (audio) {
-          audio.load(); // Preload audio
-          audio.addEventListener('error', (e) => {
-            console.error(`Error loading audio file for "${name}":`, e);
-          });
-        }
+      Object.entries(soundFiles).forEach(([name, src]) => {
+        const soundKey = name as 'hit' | 'miss' | 'sunk';
+        console.log(`[Audio Debug] Initializing audio for "${soundKey}" with src: ${src}`);
+        const audio = new Audio(src);
+        audio.preload = 'auto';
+        
+        soundsRef.current[soundKey] = { audio, isReady: false };
+
+        audio.addEventListener('loadstart', () => {
+          console.log(`[Audio Debug] Started loading: ${soundKey}`);
+        });
+
+        audio.addEventListener('canplaythrough', () => {
+          console.log(`[Audio Debug] "${soundKey}" is ready to play through.`);
+          const soundData = soundsRef.current[soundKey];
+          if (soundData) {
+             soundData.isReady = true;
+          }
+        });
+        
+        audio.addEventListener('error', (e) => {
+          console.error(`[Audio Debug] Error loading audio file for "${soundKey}".`, e);
+          const mediaError = (e.target as HTMLAudioElement).error;
+          if (mediaError) {
+            console.error(`[Audio Debug] MediaError code: ${mediaError.code}, message: ${mediaError.message}`);
+          }
+        });
+
+        // Start loading the audio
+        audio.load();
       });
     }
   }, []);
 
   const playSound = useCallback((sound: 'hit' | 'miss' | 'sunk') => {
-    const audio = soundsRef.current[sound];
-    if (audio && audio.src) {
+    const soundData = soundsRef.current[sound];
+    if (soundData && soundData.audio.src) {
+      console.log(`[Audio Debug] Attempting to play sound "${sound}". Is ready: ${soundData.isReady}`);
       // Cloning the node is a robust way to play sounds in rapid succession
-      // without interrupting the previous sound.
-      const soundToPlay = audio.cloneNode() as HTMLAudioElement;
+      const soundToPlay = soundData.audio.cloneNode() as HTMLAudioElement;
       soundToPlay.play().catch(error => {
-        console.error(`Error playing sound "${sound}" (src: ${soundToPlay.src}):`, error);
+        console.error(`[Audio Debug] Error playing sound "${sound}" (src: ${soundToPlay.src}):`, error);
       });
     } else {
-      console.warn(`Sound effect "${sound}" is not initialized or has no source.`);
+      console.warn(`[Audio Debug] Sound effect "${sound}" is not initialized or has no source.`);
     }
   }, []);
 

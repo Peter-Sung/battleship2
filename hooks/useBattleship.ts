@@ -85,46 +85,45 @@ export const useBattleship = () => {
   const placedShipNames = useMemo(() => playerShips.map(s => s.name), [playerShips]);
   const allShipsPlaced = playerShips.length === SHIPS.length;
 
-  // --- Sound Effects (Temporarily Disabled) ---
-  // const soundsRef = useRef<{ [key in 'hit' | 'miss' | 'sunk']?: HTMLAudioElement }>({});
+  // --- Sound Effects ---
+  const soundsRef = useRef<{ [key in 'hit' | 'miss' | 'sunk']?: HTMLAudioElement }>({});
   
-  // useEffect(() => {
-  //   // This check ensures Audio and window are defined, preventing server-side rendering errors.
-  //   if (typeof window !== "undefined" && typeof Audio !== "undefined") {
-  //     // Construct the full, absolute URL for audio files. This is the most robust way to handle
-  //     // assets in sandboxed environments like AI Studio, preventing CORS or path resolution errors.
-  //     const baseUrl = window.location.origin;
+  useEffect(() => {
+    // This check ensures Audio is defined, preventing server-side rendering errors.
+    if (typeof Audio !== "undefined") {
+      // When files are in the `public` folder, they are served from the root of the domain.
+      // Using an absolute path like '/filename.mp3' is the standard and most reliable way
+      // for the browser to locate these files, regardless of the app's deployment environment.
+      soundsRef.current = {
+        hit: new Audio('/explosion.mp3'),
+        miss: new Audio('/select.mp3'),
+        sunk: new Audio('/water_bubble.mp3'),
+      };
       
-  //     soundsRef.current = {
-  //       hit: new Audio(`${baseUrl}/explosion.mp3`),
-  //       miss: new Audio(`${baseUrl}/select.mp3`),
-  //       sunk: new Audio(`${baseUrl}/water_bubble.mp3`),
-  //     };
-      
-  //     Object.entries(soundsRef.current).forEach(([name, audio]) => {
-  //       if (audio) {
-  //         audio.load(); // Preload audio
-  //         audio.addEventListener('error', (e) => {
-  //           console.error(`Error loading audio file for "${name}":`, e);
-  //         });
-  //       }
-  //     });
-  //   }
-  // }, []);
+      Object.entries(soundsRef.current).forEach(([name, audio]) => {
+        if (audio) {
+          audio.load(); // Preload audio
+          audio.addEventListener('error', (e) => {
+            console.error(`Error loading audio file for "${name}":`, e);
+          });
+        }
+      });
+    }
+  }, []);
 
-  // const playSound = useCallback((sound: 'hit' | 'miss' | 'sunk') => {
-  //   const audio = soundsRef.current[sound];
-  //   if (audio && audio.src) {
-  //     // Cloning the node is a robust way to play sounds in rapid succession
-  //     // without interrupting the previous sound.
-  //     const soundToPlay = audio.cloneNode() as HTMLAudioElement;
-  //     soundToPlay.play().catch(error => {
-  //       console.error(`Error playing sound "${sound}" (src: ${soundToPlay.src}):`, error);
-  //     });
-  //   } else {
-  //     console.warn(`Sound effect "${sound}" is not initialized or has no source.`);
-  //   }
-  // }, []);
+  const playSound = useCallback((sound: 'hit' | 'miss' | 'sunk') => {
+    const audio = soundsRef.current[sound];
+    if (audio && audio.src) {
+      // Cloning the node is a robust way to play sounds in rapid succession
+      // without interrupting the previous sound.
+      const soundToPlay = audio.cloneNode() as HTMLAudioElement;
+      soundToPlay.play().catch(error => {
+        console.error(`Error playing sound "${sound}" (src: ${soundToPlay.src}):`, error);
+      });
+    } else {
+      console.warn(`Sound effect "${sound}" is not initialized or has no source.`);
+    }
+  }, []);
 
 
   // Effect to clear notification after 3 seconds
@@ -231,7 +230,7 @@ export const useBattleship = () => {
           );
 
           if (shipIsSunk) {
-            // playSound('sunk');
+            playSound('sunk');
             setNotification({
               prefix: "나의 '",
               shipName: hitShip.name,
@@ -240,7 +239,7 @@ export const useBattleship = () => {
             });
             setAiState({ mode: 'hunt', hitStreak: [], potentialTargets: [] });
           } else {
-            // playSound('hit');
+            playSound('hit');
             const newHitStreak = [...aiState.hitStreak, { row, col }];
             // Fix: Explicitly type `newAttacks` to match the expected type for `calculatePotentialTargets`.
             const newAttacks: Record<string, 'hit' | 'miss'> = {...playerGridAttacks, [key]: 'hit'};
@@ -253,7 +252,7 @@ export const useBattleship = () => {
             });
           }
         } else {
-          // playSound('miss');
+          playSound('miss');
           setAiState(prev => ({
             ...prev,
             potentialTargets: prev.potentialTargets.filter(p => p.row !== row || p.col !== col)
@@ -264,7 +263,7 @@ export const useBattleship = () => {
 
       return () => clearTimeout(timeoutId);
     }
-  }, [gameState, currentTurn, winner, playerGridAttacks, playerShips, aiState]);
+  }, [gameState, currentTurn, winner, playerGridAttacks, playerShips, aiState, playSound]);
 
 
   const toggleOrientation = useCallback(() => {
@@ -352,7 +351,7 @@ export const useBattleship = () => {
         const isSunk = newHits === hitShip.size;
         
         if (isSunk) {
-          // playSound('sunk');
+          playSound('sunk');
           setNotification({
             prefix: "AI의 '",
             shipName: hitShip.name,
@@ -360,7 +359,7 @@ export const useBattleship = () => {
             shipColor: hitShip.color.text,
           });
         } else {
-            // playSound('hit');
+            playSound('hit');
         }
 
         setAiShips(prevShips => 
@@ -369,10 +368,10 @@ export const useBattleship = () => {
             )
         );
     } else {
-        // playSound('miss');
+        playSound('miss');
         setCurrentTurn('ai');
     }
-  }, [gameState, currentTurn, winner, enemyGridAttacks, aiShips]);
+  }, [gameState, currentTurn, winner, enemyGridAttacks, aiShips, playSound]);
 
   const handleShipSelect = useCallback((ship: ShipType) => {
     if (placedShipNames.includes(ship.name) || gameState !== 'placing') return;

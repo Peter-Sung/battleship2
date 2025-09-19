@@ -5,12 +5,13 @@ import Footer from './Footer';
 
 interface LayoutProps {
   children: React.ReactNode;
+  onOpenModal: () => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: React.FC<LayoutProps> = ({ children, onOpenModal }) => {
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 bg-opacity-80 backdrop-blur-sm">
-      <Header />
+      <Header onOpenModal={onOpenModal} />
       <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>

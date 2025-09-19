@@ -1,6 +1,13 @@
-import React from 'react';
 
-const Header: React.FC = () => {
+import React from 'react';
+import VisitorCounter from './VisitorCounter';
+import Button from './ui/Button';
+
+interface HeaderProps {
+  onOpenModal: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onOpenModal }) => {
   const handleDoubleClick = () => {
     window.dispatchEvent(new CustomEvent('toggleGodMode'));
   };
@@ -17,6 +24,12 @@ const Header: React.FC = () => {
             <h1 className="text-3xl font-extrabold text-cyan-400">
               Battleship
             </h1>
+          </div>
+          <div className="flex items-center gap-6">
+            <VisitorCounter />
+            <Button variant="secondary" size="small" onClick={onOpenModal}>
+              로그인
+            </Button>
           </div>
         </div>
       </div>

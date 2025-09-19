@@ -1,5 +1,5 @@
 {
-  "name": "Battleship",
+  "name": "Battleship (v0.2)",
   "description": "AI 또는 다른 플레이어와 온라인으로 대결할 수 있는 모던한 웹 기반 배틀십 게임입니다. 함대를 전략적으로 배치하고 상대방의 함선을 격침시켜 승리를 쟁취하세요.",
   "requestFramePermissions": []
 }

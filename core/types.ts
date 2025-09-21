@@ -26,3 +26,7 @@ export type GridCell = {
   state: CellState;
   color?: ShipColor;
 };
+
+export type Player = 'player' | 'ai';
+
+export type AttackLog = Record<string, 'hit' | 'miss'>;

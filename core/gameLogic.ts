@@ -1,4 +1,4 @@
-import { ShipType, Ship, Orientation, GridCell } from "./types";
+import { ShipType, Ship, Orientation, GridCell, ShipColor } from "./types";
 
 export const SHIPS: ShipType[] = [
   { name: '항공모함', size: 5, color: { bg: 'bg-yellow-500', border: 'border-yellow-400', sunk: 'bg-yellow-900', text: 'text-yellow-400' } },
@@ -7,6 +7,8 @@ export const SHIPS: ShipType[] = [
   { name: '잠수함', size: 3, color: { bg: 'bg-pink-500', border: 'border-pink-400', sunk: 'bg-pink-900', text: 'text-pink-400' } },
   { name: '구축함', size: 2, color: { bg: 'bg-purple-500', border: 'border-purple-400', sunk: 'bg-purple-900', text: 'text-purple-400' } },
 ];
+
+export const INVALID_COLOR: ShipColor = { bg: 'bg-red-500/70', border: 'border-red-400', sunk: 'bg-red-800/70', text: 'text-red-400' };
 
 export const isPlacementValid = (
   shipToPlace: ShipType,
@@ -88,6 +90,23 @@ export const checkAttack = (ships: Ship[], row: number, col: number): { hitShip:
   });
   return { hitShip: hitShip || null };
 };
+
+export const checkAndUpdateShipHits = (row: number, col: number, ships: Ship[]): { hitShip: Ship | null, updatedShips: Ship[] } => {
+  const { hitShip } = checkAttack(ships, row, col);
+  if (hitShip) {
+    // Return a new ship object with updated hits, and a new array for the fleet
+    const updatedShips = ships.map(s => {
+      if (s.name === hitShip.name) {
+        return { ...s, hits: s.hits + 1 };
+      }
+      return s;
+    });
+    // Find the original ship in the new array to return it with the original hit count
+    const originalHitShip = updatedShips.find(s => s.name === hitShip.name);
+    return { hitShip: originalHitShip ? { ...originalHitShip, hits: hitShip.hits } : null, updatedShips };
+  }
+  return { hitShip: null, updatedShips: ships };
+}
 
 const createEmptyGrid = (): GridCell[][] => Array(10).fill(null).map(() => Array(10).fill({ state: 'empty' }));
 
